@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from addGoodForOrderDialog import addGFODialog
 
 
 class addOrderDialog(QtWidgets.QDialog):
@@ -138,4 +139,16 @@ class addOrderDialog(QtWidgets.QDialog):
         self.label_2.setText(_translate("Dialog", "Номер телефона заказчика"))
         self.pushButton_3.setText(_translate("Dialog", "Добавить"))
         self.pushButton_4.setText(_translate("Dialog", "Отмена"))
+        self.pushButton_4.clicked.connect(self.close)
+        self.pushButton.clicked.connect(self.addGoodForOrder)
+
+    def addGoodForOrder(self):
+        add = addGFODialog()
+        add.exec_()
+        ind, count = 0, 0
+        if add.pushButton.text() == "+":
+            ind = str(add.tableView.model().index(add.tableView.currentIndex().row(), 0).data())
+            count = add.spinbox.value()
+        print(ind, count)
+
 

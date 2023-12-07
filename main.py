@@ -117,12 +117,13 @@ class Ui_MainWindow(object):
         self.tableView_2.setSelectionMode(self.tableView_2.SingleSelection)
         db.close()
 
-    def orderlistdata(self, item):
+    def orderlistdata(self):
+        ind = str(self.tableView_2.model().index(self.tableView_2.currentIndex().row(), 0).data())
         db = dbret()
         cur = db.cursor()
         cur.execute(f'SELECT manufacturers.name, goods.model, order.count, sum FROM shopdb.order, shopdb.goods, '
                     f'shopdb.manufacturers where goods_idgoods = goods.idgoods and goods.manufacturers_idmanufacturers '
-                    f'= manufacturers.idmanufacturers and num = {item.row() + 1};')
+                    f'= manufacturers.idmanufacturers and num = {ind};')
         data = cur.fetchall()
         if data == ():
             data = (('', '', '', ''),)
@@ -130,6 +131,16 @@ class Ui_MainWindow(object):
         self.tableView_3.setModel(model)
         self.tableView_3.resizeColumnsToContents()
         self.tableView_3.setSelectionMode(self.tableView_3.SingleSelection)
+
+    def delGoodFun(self):
+        ind = str(self.tableView.model().index(self.tableView.currentIndex().row(), 0).data())
+        db = dbret()
+        cur = db.cursor()
+        sql = "DELETE FROM goods WHERE idgoods = %s"
+        val = (ind,)
+        cur.execute(sql, val)
+        db.commit()
+        db.close()
 
     def goodsfilterdata(self):
         db = dbret()
@@ -218,7 +229,6 @@ class Ui_MainWindow(object):
             add.exec_()
         self.loaddata()
 
-
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
@@ -270,6 +280,7 @@ class Ui_MainWindow(object):
         self.comboBox_2.addItem("Производители")
         for i in range(len(data)):
             self.comboBox_2.addItem(str(data[i][0]))
+        db.close()
         self.horizontalLayout_2.addWidget(self.comboBox_2)
         self.lineEdit = QtWidgets.QLineEdit(self.page)
         self.lineEdit.setMinimumSize(QtCore.QSize(0, 30))

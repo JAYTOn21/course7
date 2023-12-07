@@ -10,6 +10,23 @@ def aboutfun():
     dialog.exec_()
 
 
+def delGoodDialog():
+    dlg = QMessageBox()
+    dlg.setWindowTitle("Удаление товара")
+    dlg.setText("Вы уверены, что хотите удалить этот товар?")
+    dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    but1 = dlg.button(QMessageBox.Yes)
+    but1.setText("Да")
+    but2 = dlg.button(QMessageBox.No)
+    but2.setText("Нет")
+    dlg.setIcon(QMessageBox.Question)
+    dlg.exec()
+    if dlg.clickedButton() == but1:
+        return 1
+    else:
+        return 2
+
+
 class MainWindow:
     def __init__(self):
         self.main_win = QMainWindow()
@@ -25,9 +42,18 @@ class MainWindow:
         self.ui.comboBox_2.currentIndexChanged.connect(self.ui.goodsfilterdata)
         self.ui.action_4.triggered.connect(aboutfun)
         self.ui.action.triggered.connect(self.ui.addChoice)
+        self.ui.action_3.triggered.connect(self.delGoodFun)
 
     def goods_switch(self):
         self.ui.stackedWidget.setCurrentWidget(self.ui.page)
+
+    def delGoodFun(self):
+        ind = str(self.ui.tableView.model().index(self.ui.tableView.currentIndex().row(), 0).data())
+        if ind is not None:
+            data = delGoodDialog()
+            if data == 1:
+                self.ui.delGoodFun()
+                self.ui.loaddata()
 
     def orders_switch(self):
         self.ui.stackedWidget.setCurrentWidget(self.ui.page_2)
