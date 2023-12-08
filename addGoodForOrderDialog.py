@@ -1,6 +1,12 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pymysql as mdb
 from PyQt5.QtCore import Qt
+from err import errDialog
+
+
+def errfun():
+    dialog = errDialog()
+    dialog.exec_()
 
 
 def dbret():
@@ -111,12 +117,12 @@ class addGFODialog(QtWidgets.QDialog):
         cur = db.cursor()
         self.comboBox.clear()
         self.comboBox_2.clear()
-        cur.execute('select name from categories')
+        cur.execute('select name from categories order by name')
         data = cur.fetchall()
         self.comboBox.addItem("Категории")
         for i in range(len(data)):
             self.comboBox.addItem(str(data[i][0]))
-        cur.execute("select name from manufacturers")
+        cur.execute("select name from manufacturers order by name")
         data = cur.fetchall()
         self.comboBox_2.addItem("Производители")
         for i in range(len(data)):
@@ -139,8 +145,11 @@ class addGFODialog(QtWidgets.QDialog):
         self.pushButton.clicked.connect(self.add)
 
     def add(self):
-        self.pushButton.setText("+")
-        self.close()
+        if self.spinbox.value() == 0:
+            errfun()
+        else:
+            self.pushButton.setText("+")
+            self.close()
 
     def loaddata(self):
         db = dbret()

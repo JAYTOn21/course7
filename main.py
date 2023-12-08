@@ -60,7 +60,7 @@ class OrdersTableModel(QtCore.QAbstractTableModel):
 
     def headerData(self, p_int, orientation, role=None):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            header = ['Номер заказа', 'Сумма', 'Дата']
+            header = ['Номер заказа', 'Сумма', 'Дата', 'Номер телефона']
             return header[p_int]
         else:
             return QtCore.QAbstractTableModel.headerData(self, p_int, orientation, role)
@@ -101,16 +101,16 @@ class Ui_MainWindow(object):
                     "idcategories and manufacturers_idmanufacturers = idmanufacturers order by idgoods;")
         data = cur.fetchall()
         if data == ():
-            data = (('', '', '', '', '', '', '', '', '', ''),)
+            data = (('', '', '', '', '', '', '', '', '', '', ''),)
         model = GoodsTableModel(data)
         self.tableView.setModel(model)
         self.tableView.setColumnHidden(0, True)
         self.tableView.resizeColumnsToContents()
         self.tableView.setSelectionMode(self.tableView.SingleSelection)
-        cur.execute('SELECT distinct num, allsum, order.date FROM shopdb.order;')
+        cur.execute('SELECT distinct num, allsum, order.date, phoneNum FROM shopdb.order;')
         data = cur.fetchall()
         if data == ():
-            data = (('', '', ''),)
+            data = (('', '', '', ''),)
         model = OrdersTableModel(data)
         self.tableView_2.setModel(model)
         self.tableView_2.resizeColumnsToContents()
@@ -118,29 +118,50 @@ class Ui_MainWindow(object):
         db.close()
 
     def orderlistdata(self):
-        ind = str(self.tableView_2.model().index(self.tableView_2.currentIndex().row(), 0).data())
-        db = dbret()
-        cur = db.cursor()
-        cur.execute(f'SELECT manufacturers.name, goods.model, order.count, sum FROM shopdb.order, shopdb.goods, '
-                    f'shopdb.manufacturers where goods_idgoods = goods.idgoods and goods.manufacturers_idmanufacturers '
-                    f'= manufacturers.idmanufacturers and num = {ind};')
-        data = cur.fetchall()
-        if data == ():
-            data = (('', '', '', ''),)
-        model = OrdersListTableModel(data)
-        self.tableView_3.setModel(model)
-        self.tableView_3.resizeColumnsToContents()
-        self.tableView_3.setSelectionMode(self.tableView_3.SingleSelection)
+        ind = self.tableView_2.model().index(self.tableView_2.currentIndex().row(), 0).data()
+        if ind != "":
+            db = dbret()
+            cur = db.cursor()
+            cur.execute(f'SELECT manufacturers.name, goods.model, order.count, sum FROM shopdb.order, shopdb.goods, '
+                        f'shopdb.manufacturers where goods_idgoods = goods.idgoods and '
+                        f'goods.manufacturers_idmanufacturers = manufacturers.idmanufacturers and num = {ind};')
+            data = cur.fetchall()
+            if data == ():
+                data = (('', '', '', ''),)
+            model = OrdersListTableModel(data)
+            self.tableView_3.setModel(model)
+            self.tableView_3.resizeColumnsToContents()
+            self.tableView_3.setSelectionMode(self.tableView_3.SingleSelection)
 
     def delGoodFun(self):
         ind = str(self.tableView.model().index(self.tableView.currentIndex().row(), 0).data())
         db = dbret()
         cur = db.cursor()
+        cur.execute(f"select distinct num from shopdb.order where goods_idgoods = {ind}")
+        numNeed = cur.fetchall()
+        if numNeed != ():
+            num = numNeed[0][0]
+            sql = "DELETE FROM shopdb.order WHERE num = %s"
+            val = (num,)
+            cur.execute(sql, val)
+            db.commit()
+        print(1)
         sql = "DELETE FROM goods WHERE idgoods = %s"
         val = (ind,)
         cur.execute(sql, val)
         db.commit()
         db.close()
+
+    def delOrderFun(self):
+        num = str(self.tableView_2.model().index(self.tableView_2.currentIndex().row(), 0).data())
+        db = dbret()
+        cur = db.cursor()
+        sql = "DELETE FROM shopdb.order WHERE num = %s"
+        val = (num,)
+        cur.execute(sql, val)
+        db.commit()
+        db.close()
+        self.orderlistdata()
 
     def goodsfilterdata(self):
         db = dbret()
@@ -209,7 +230,7 @@ class Ui_MainWindow(object):
             db = dbret()
             cur = db.cursor()
             cur.execute(
-                f"SELECT distinct num, allsum, order.date FROM shopdb.order where num like ('%' + '{txt}' + '%');")
+                f"SELECT distinct num, allsum, order.date, phoneNum FROM shopdb.order where num like ('%' + '{txt}' + '%');")
             data = cur.fetchall()
             if data == ():
                 data = (('', '', ''),)
@@ -228,6 +249,22 @@ class Ui_MainWindow(object):
             add = addOrderDialog()
             add.exec_()
         self.loaddata()
+        self.filtersUpdate()
+
+    def filtersUpdate(self):
+        db = dbret()
+        cur = db.cursor()
+        cur.execute("select name from categories order by name")
+        data = cur.fetchall()
+        self.comboBox.addItem("Категории")
+        for i in range(len(data)):
+            self.comboBox.addItem(str(data[i][0]))
+        cur.execute("select name from manufacturers order by name")
+        data = cur.fetchall()
+        self.comboBox_2.addItem("Производители")
+        for i in range(len(data)):
+            self.comboBox_2.addItem(str(data[i][0]))
+        db.close()
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -264,23 +301,10 @@ class Ui_MainWindow(object):
         self.comboBox = QtWidgets.QComboBox(self.page)
         self.comboBox.setMinimumSize(QtCore.QSize(0, 30))
         self.comboBox.setObjectName("comboBox")
-        db = dbret()
-        cur = db.cursor()
-        cur.execute("select name from categories")
-        data = cur.fetchall()
-        self.comboBox.addItem("Категории")
-        for i in range(len(data)):
-            self.comboBox.addItem(str(data[i][0]))
         self.horizontalLayout_2.addWidget(self.comboBox)
         self.comboBox_2 = QtWidgets.QComboBox(self.page)
         self.comboBox_2.setMinimumSize(QtCore.QSize(0, 30))
         self.comboBox_2.setObjectName("comboBox_2")
-        cur.execute("select name from manufacturers")
-        data = cur.fetchall()
-        self.comboBox_2.addItem("Производители")
-        for i in range(len(data)):
-            self.comboBox_2.addItem(str(data[i][0]))
-        db.close()
         self.horizontalLayout_2.addWidget(self.comboBox_2)
         self.lineEdit = QtWidgets.QLineEdit(self.page)
         self.lineEdit.setMinimumSize(QtCore.QSize(0, 30))
@@ -323,15 +347,18 @@ class Ui_MainWindow(object):
         self.action_2.setObjectName("action_2")
         self.action_3 = QtWidgets.QAction(MainWindow)
         self.action_3.setObjectName("action_3")
+        self.action_card = QtWidgets.QAction(MainWindow)
+        self.action_card.setObjectName("action_card")
         self.action_4 = QtWidgets.QAction(MainWindow)
         self.action_4.setObjectName("action_4")
         self.menu.addAction(self.action)
         self.menu.addAction(self.action_2)
         self.menu.addAction(self.action_3)
+        self.menu_2.addAction(self.action_card)
         self.menu_2.addAction(self.action_4)
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menu_2.menuAction())
-
+        self.filtersUpdate()
         self.retranslateUi(MainWindow)
         self.stackedWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -348,4 +375,5 @@ class Ui_MainWindow(object):
         self.action.setText(_translate("MainWindow", "Добавить"))
         self.action_2.setText(_translate("MainWindow", "Изменить"))
         self.action_3.setText(_translate("MainWindow", "Удалить"))
+        self.action_card.setText(_translate("MainWindow", "О товаре"))
         self.action_4.setText(_translate("MainWindow", "О программе"))

@@ -1,8 +1,15 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 import pymysql as mdb
+import re
+from err import errDialog
 
 from addGoodForOrderDialog import addGFODialog
+
+
+def errfun():
+    dialog = errDialog()
+    dialog.exec_()
 
 
 def dbret():
@@ -11,6 +18,7 @@ def dbret():
                      password='2173',
                      database='shopdb')
     return db
+
 
 class GoodsTableModel(QtCore.QAbstractTableModel):
     def __init__(self, data):
@@ -32,7 +40,7 @@ class GoodsTableModel(QtCore.QAbstractTableModel):
 
     def headerData(self, p_int, orientation, role=None):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            header = ['ID', 'Производитель', 'Модель', 'Сумма']
+            header = ['ID', 'Производитель', 'Модель', 'Количество', 'Сумма']
             return header[p_int]
         else:
             return QtCore.QAbstractTableModel.headerData(self, p_int, orientation, role)
@@ -82,7 +90,7 @@ class addOrderDialog(QtWidgets.QDialog):
         font = QtGui.QFont()
         font.setPointSize(10)
         self.label_3.setFont(font)
-        self.label_3.setAlignment(QtCore.Qt.AlignBottom|QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft)
+        self.label_3.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft)
         self.label_3.setObjectName("label_3")
         self.verticalLayout.addWidget(self.label_3)
         self.lineEdit_3 = QtWidgets.QLineEdit(self)
@@ -166,6 +174,10 @@ class addOrderDialog(QtWidgets.QDialog):
         self.pushButton_4.setObjectName("pushButton_4")
         self.horizontalLayout_4.addWidget(self.pushButton_4)
         self.gridLayout.addLayout(self.horizontalLayout_4, 4, 0, 1, 1)
+        self.lineEdit.setReadOnly(True)
+        self.lineEdit_3.setReadOnly(True)
+        self.lineEdit_3.setText("0 ₽")
+        self.lineEdit_2.setPlaceholderText("+71112223333")
         _translate = QtCore.QCoreApplication.translate
         self.setWindowTitle(_translate("Dialog", "Добавление заказа"))
         self.pushButton.setText(_translate("Dialog", "Добавить"))
@@ -177,23 +189,103 @@ class addOrderDialog(QtWidgets.QDialog):
         self.pushButton_4.setText(_translate("Dialog", "Отмена"))
         self.pushButton_4.clicked.connect(self.close)
         self.pushButton.clicked.connect(self.addGoodForOrder)
-        self.data = ()
+        self.pushButton_2.clicked.connect(self.delGoodFromOrder)
+        self.pushButton_3.clicked.connect(self.addOrderFun)
+        db = dbret()
+        cur = db.cursor()
+        cur.execute('select max(num) from shopdb.order')
+        maxNum = cur.fetchall()[0][0]
+        if maxNum is not None:
+            self.lineEdit.setText(str(int(maxNum) + 1))
+        else:
+            self.lineEdit.setText("1")
+        self.data = (('', '', '', '', ''),)
 
     def addGoodForOrder(self):
         add = addGFODialog()
         add.exec_()
         ind, count = 0, 0
         if add.pushButton.text() == "+":
-            ind = str(add.tableView.model().index(add.tableView.currentIndex().row(), 0).data())
+            ind = int(add.tableView.model().index(add.tableView.currentIndex().row(), 0).data())
             count = add.spinbox.value()
-        if ind != 0:
-            if self.data == ():
-                db = dbret()
-                cur = db.cursor()
-                cur.execute(f'select idgoods, manufacturers.name, model, (price * {count}) from goods, manufacturers '
-                            f'where idgoods = {ind} and manufacturers_idmanufacturers = manufacturers.idmanufacturers')
+        if ind != 0 and count != 0:
+            db = dbret()
+            cur = db.cursor()
+            if self.data == (('', '', '', '', ''),):
+                cur.execute(f'select idgoods, manufacturers.name, model, {count}, (price * {count}) from goods, '
+                            f'manufacturers where idgoods = {ind} and manufacturers_idmanufacturers = '
+                            f'manufacturers.idmanufacturers')
                 self.data = cur.fetchall()
                 model = GoodsTableModel(self.data)
+                self.tableView.setModel(model)
+                self.tableView.setColumnHidden(0, True)
 
+            else:
+                check = False
+                indCheck = -1
+                for i in range(len(self.data)):
+                    if ind == self.data[i][0]:
+                        check = True
+                        indCheck = i
+                if check:
+                    tmpCount = self.data[indCheck][3]
+                    self.data = self.data[:indCheck] + self.data[(indCheck + 1):]
+                    cur.execute(
+                        f'select idgoods, manufacturers.name, model, {count + tmpCount}, (price * {count + tmpCount}) '
+                        f'from goods, manufacturers where idgoods = {ind} and manufacturers_idmanufacturers = '
+                        f'manufacturers.idmanufacturers')
+                else:
+                    cur.execute(
+                        f'select idgoods, manufacturers.name, model, {count}, (price * {count}) from goods, '
+                        f'manufacturers where idgoods = {ind} and manufacturers_idmanufacturers = '
+                        f'manufacturers.idmanufacturers')
+                self.data = self.data + cur.fetchall()
+                model = GoodsTableModel(self.data)
+                self.tableView.setModel(model)
+                self.tableView.setColumnHidden(0, True)
+            self.tableView.setSelectionMode(self.tableView.SingleSelection)
+            self.tableView.resizeColumnsToContents()
+            self.allSumCalc()
+            db.close()
 
+    def delGoodFromOrder(self):
+        if self.data != (('', '', '', '', ''),):
+            if len(self.data) != 1:
+                ind = self.tableView.currentIndex().row()
+                self.data = self.data[:ind] + self.data[(ind + 1):]
+            else:
+                self.data = (('', '', '', '', ''),)
+            model = GoodsTableModel(self.data)
+            self.tableView.setModel(model)
+            self.tableView.setColumnHidden(0, True)
+            self.tableView.setSelectionMode(self.tableView.SingleSelection)
+            self.tableView.resizeColumnsToContents()
+            self.allSumCalc()
 
+    def allSumCalc(self):
+        allSum = 0
+        if self.data != (('', '', '', '', ''),):
+            for i in range(len(self.data)):
+                allSum += self.data[i][4]
+        self.lineEdit_3.setText(str(allSum) + " ₽")
+
+    def addOrderFun(self):
+        num = self.lineEdit.text()
+        phone = self.lineEdit_2.text()
+        phoneRe = "^\\+?[1-9][0-9]{10}$"
+        phone = re.findall(phoneRe, phone)
+        allsum = self.lineEdit_3.text()[:(len(self.lineEdit_3.text()) - 2)]
+        date = self.calendarWidget.selectedDate().toString("dd.MM.yyyy")
+        if phone != [] and self.data != (('', '', '', '', ''),):
+            phone = phone[0]
+            for i in range(len(self.data)):
+                db = dbret()
+                cur = db.cursor()
+                cur.execute(f"insert into shopdb.order (num, count, sum, allsum, date, phoneNum, goods_idgoods) values"
+                            f"({num}, {self.data[i][3]}, {self.data[i][4]}, {allsum}, '{date}', '{phone}', "
+                            f"{self.data[i][0]})")
+                db.commit()
+                db.close()
+                self.close()
+        else:
+            errfun()
