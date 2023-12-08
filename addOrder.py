@@ -1,5 +1,41 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import Qt
+import pymysql as mdb
+
 from addGoodForOrderDialog import addGFODialog
+
+
+def dbret():
+    db = mdb.connect(host='localhost',
+                     user='root',
+                     password='2173',
+                     database='shopdb')
+    return db
+
+class GoodsTableModel(QtCore.QAbstractTableModel):
+    def __init__(self, data):
+        super(GoodsTableModel, self).__init__()
+        self.data = data
+
+    def columnCount(self, parent=None):
+        return len(self.data[0])
+
+    def rowCount(self, parent=None):
+        return len(self.data)
+
+    def data(self, index, role=Qt.DisplayRole):
+        row = index.row()
+        col = index.column()
+        if role == Qt.DisplayRole:
+            return str(self.data[row][col])
+        return None
+
+    def headerData(self, p_int, orientation, role=None):
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+            header = ['ID', 'Производитель', 'Модель', 'Сумма']
+            return header[p_int]
+        else:
+            return QtCore.QAbstractTableModel.headerData(self, p_int, orientation, role)
 
 
 class addOrderDialog(QtWidgets.QDialog):
@@ -141,6 +177,7 @@ class addOrderDialog(QtWidgets.QDialog):
         self.pushButton_4.setText(_translate("Dialog", "Отмена"))
         self.pushButton_4.clicked.connect(self.close)
         self.pushButton.clicked.connect(self.addGoodForOrder)
+        self.data = ()
 
     def addGoodForOrder(self):
         add = addGFODialog()
@@ -149,6 +186,14 @@ class addOrderDialog(QtWidgets.QDialog):
         if add.pushButton.text() == "+":
             ind = str(add.tableView.model().index(add.tableView.currentIndex().row(), 0).data())
             count = add.spinbox.value()
-        print(ind, count)
+        if ind != 0:
+            if self.data == ():
+                db = dbret()
+                cur = db.cursor()
+                cur.execute(f'select idgoods, manufacturers.name, model, (price * {count}) from goods, manufacturers '
+                            f'where idgoods = {ind} and manufacturers_idmanufacturers = manufacturers.idmanufacturers')
+                self.data = cur.fetchall()
+                model = GoodsTableModel(self.data)
+
 
 

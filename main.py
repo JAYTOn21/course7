@@ -34,7 +34,7 @@ class GoodsTableModel(QtCore.QAbstractTableModel):
     def headerData(self, p_int, orientation, role=None):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
             header = ['ID', 'Категория', 'Производитель', 'Модель', 'Цена', 'Количество', 'Оценка', 'Вес', 'x', 'y',
-                      'z', 'Категория', 'Производитель']
+                      'z']
             return header[p_int]
         else:
             return QtCore.QAbstractTableModel.headerData(self, p_int, orientation, role)
