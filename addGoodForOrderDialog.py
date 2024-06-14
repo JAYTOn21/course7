@@ -12,7 +12,7 @@ def errfun():
 def dbret():
     db = mdb.connect(host='localhost',
                      user='root',
-                     password='2173',
+                     password='1234',
                      database='shopdb')
     return db
 
@@ -37,8 +37,7 @@ class GoodsTableModel(QtCore.QAbstractTableModel):
 
     def headerData(self, p_int, orientation, role=None):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            header = ['ID', 'Категория', 'Производитель', 'Модель', 'Цена', 'Количество', 'Оценка', 'Вес', 'x', 'y',
-                      'z', 'Категория', 'Производитель']
+            header = ['ID', 'Категория', 'Производитель', 'Модель', 'Цена', 'Количество', 'Оценка']
             return header[p_int]
         else:
             return QtCore.QAbstractTableModel.headerData(self, p_int, orientation, role)
@@ -154,12 +153,12 @@ class addGFODialog(QtWidgets.QDialog):
     def loaddata(self):
         db = dbret()
         cur = db.cursor()
-        cur.execute("SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion, weight, x, "
-                    "y, z  FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where categories_idcategories = "
+        cur.execute("SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion FROM "
+                    "shopdb.goods, shopdb.categories, shopdb.manufacturers where categories_idcategories = "
                     "idcategories and manufacturers_idmanufacturers = idmanufacturers order by idgoods;")
         data = cur.fetchall()
         if data == ():
-            data = (('', '', '', '', '', '', '', '', '', ''),)
+            data = (('', '', '', '', '', '', ''),)
         model = GoodsTableModel(data)
         self.tableView.setModel(model)
         self.tableView.setColumnHidden(0, True)

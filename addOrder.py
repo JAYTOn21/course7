@@ -15,7 +15,7 @@ def errfun():
 def dbret():
     db = mdb.connect(host='localhost',
                      user='root',
-                     password='2173',
+                     password='1234',
                      database='shopdb')
     return db
 
@@ -177,14 +177,14 @@ class addOrderDialog(QtWidgets.QDialog):
         self.lineEdit.setReadOnly(True)
         self.lineEdit_3.setReadOnly(True)
         self.lineEdit_3.setText("0 ₽")
-        self.lineEdit_2.setPlaceholderText("+71112223333")
+        self.lineEdit_2.setPlaceholderText("name@post.domen")
         _translate = QtCore.QCoreApplication.translate
         self.setWindowTitle(_translate("Dialog", "Добавление заказа"))
         self.pushButton.setText(_translate("Dialog", "Добавить"))
         self.pushButton_2.setText(_translate("Dialog", "Удалить"))
         self.label_3.setText(_translate("Dialog", "Общая сумма:"))
         self.label.setText(_translate("Dialog", "Номер заказа"))
-        self.label_2.setText(_translate("Dialog", "Номер телефона заказчика"))
+        self.label_2.setText(_translate("Dialog", "Адрес эл. почты"))
         self.pushButton_3.setText(_translate("Dialog", "Добавить"))
         self.pushButton_4.setText(_translate("Dialog", "Отмена"))
         self.pushButton_4.clicked.connect(self.close)
@@ -271,18 +271,21 @@ class addOrderDialog(QtWidgets.QDialog):
 
     def addOrderFun(self):
         num = self.lineEdit.text()
-        phone = self.lineEdit_2.text()
-        phoneRe = "^\\+?[1-9][0-9]{10}$"
-        phone = re.findall(phoneRe, phone)
+        email = self.lineEdit_2.text()
+        emailPattern = r"\S+@\S+\.\S+"
+        email = re.findall(emailPattern, email)
         allsum = self.lineEdit_3.text()[:(len(self.lineEdit_3.text()) - 2)]
         date = self.calendarWidget.selectedDate().toString("dd.MM.yyyy")
-        if phone != [] and self.data != (('', '', '', '', ''),):
-            phone = phone[0]
+        if email != [] and self.data != (('', '', '', '', ''),):
+            email = email[0]
             for i in range(len(self.data)):
                 db = dbret()
                 cur = db.cursor()
-                cur.execute(f"insert into shopdb.order (num, count, sum, allsum, date, phoneNum, goods_idgoods) values"
-                            f"({num}, {self.data[i][3]}, {self.data[i][4]}, {allsum}, '{date}', '{phone}', "
+                cur.execute(f"select id from auth_user where email = '{str(email)}'")
+                userId = cur.fetchall()[0][0]
+                print(userId)
+                cur.execute(f"insert into shopdb.order (num, count, sum, allsum, date, user_iduser, goods_idgoods) values"
+                            f"({num}, {self.data[i][3]}, {self.data[i][4]}, {allsum}, '{date}', '{userId}', "
                             f"{self.data[i][0]})")
                 db.commit()
                 db.close()

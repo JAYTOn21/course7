@@ -5,7 +5,7 @@ import pymysql as mdb
 def dbret():
     db = mdb.connect(host='localhost',
                      user='root',
-                     password='2173',
+                     password='1234',
                      database='shopdb')
     return db
 
@@ -220,13 +220,11 @@ class cardDialog(QtWidgets.QDialog):
     def loaddata(self):
         db = dbret()
         cur = db.cursor()
-        print(self.label_12.text())
         cur.execute(f"SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion, weight, x, "
                     f"y, z, picture FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where "
                     f"categories_idcategories = idcategories and manufacturers_idmanufacturers = idmanufacturers and "
                     f"idgoods = {self.label_12.text()};")
         data = cur.fetchall()
-        print(data)
         self.lineEdit_3.setText(str(data[0][1]))
         self.lineEdit_4.setText(str(data[0][6]))
         self.lineEdit_7.setText(str(data[0][2]))
@@ -237,7 +235,7 @@ class cardDialog(QtWidgets.QDialog):
         self.lineEdit_6.setText(str(data[0][8]))
         self.lineEdit_2.setText(str(data[0][9]))
         self.lineEdit.setText(str(data[0][10]))
-        pixmap = QtGui.QPixmap(str(data[0][11]))
+        pixmap = QtGui.QPixmap(f"D:/Other/Diplom/WebPCShop/static/images/{str(data[0][11])}")
         pixmap = pixmap.scaledToWidth(400)
         self.imglbl.setPixmap(pixmap)
         self.imglbl.resize(20, 20)

@@ -8,7 +8,7 @@ from addOrder import addOrderDialog
 def dbret():
     db = mdb.connect(host='localhost',
                      user='root',
-                     password='2173',
+                     password='1234',
                      database='shopdb')
     return db
 
@@ -33,8 +33,7 @@ class GoodsTableModel(QtCore.QAbstractTableModel):
 
     def headerData(self, p_int, orientation, role=None):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            header = ['ID', 'Категория', 'Производитель', 'Модель', 'Цена', 'Количество', 'Оценка', 'Вес', 'x', 'y',
-                      'z']
+            header = ['ID', 'Артикул', 'Категория', 'Производитель', 'Модель', 'Цена', 'Количество', 'Оценка']
             return header[p_int]
         else:
             return QtCore.QAbstractTableModel.headerData(self, p_int, orientation, role)
@@ -55,12 +54,20 @@ class OrdersTableModel(QtCore.QAbstractTableModel):
         row = index.row()
         col = index.column()
         if role == Qt.DisplayRole:
-            return str(self.data[row][col])
+            if col == 4:
+                if str(self.data[row][col]) == '1':
+                    return "В обработке"
+                elif str(self.data[row][col]) == '2':
+                    return "В пути"
+                else:
+                    return "Завершен"
+            else:
+                return str(self.data[row][col])
         return None
 
     def headerData(self, p_int, orientation, role=None):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            header = ['Номер заказа', 'Сумма', 'Дата', 'Номер телефона']
+            header = ['Номер заказа', 'Сумма', 'Дата', 'Номер телефона', 'Статус заказа']
             return header[p_int]
         else:
             return QtCore.QAbstractTableModel.headerData(self, p_int, orientation, role)
@@ -96,21 +103,22 @@ class Ui_MainWindow(object):
     def loaddata(self):
         db = dbret()
         cur = db.cursor()
-        cur.execute("SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion, weight, x, "
-                    "y, z  FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where categories_idcategories = "
+        cur.execute("SELECT idgoods, articul, categories.name, manufacturers.name, model, price, count, opinion FROM "
+                    "shopdb.goods, shopdb.categories, shopdb.manufacturers where categories_idcategories ="
                     "idcategories and manufacturers_idmanufacturers = idmanufacturers order by idgoods;")
         data = cur.fetchall()
         if data == ():
-            data = (('', '', '', '', '', '', '', '', '', '', ''),)
+            data = (('', '', '', '', '', '', ''),)
         model = GoodsTableModel(data)
         self.tableView.setModel(model)
         self.tableView.setColumnHidden(0, True)
         self.tableView.resizeColumnsToContents()
         self.tableView.setSelectionMode(self.tableView.SingleSelection)
-        cur.execute('SELECT distinct num, allsum, order.date, phoneNum FROM shopdb.order;')
+        cur.execute('SELECT distinct num, allsum, order.date, (select email from auth_user where id = user_iduser), '
+                    'orderStatus FROM shopdb.order;')
         data = cur.fetchall()
         if data == ():
-            data = (('', '', '', ''),)
+            data = (('', '', '', '', ''),)
         model = OrdersTableModel(data)
         self.tableView_2.setModel(model)
         self.tableView_2.resizeColumnsToContents()
@@ -178,35 +186,34 @@ class Ui_MainWindow(object):
         if str1 != "(":
             if self.comboBox.currentIndex() != 0 and self.comboBox_2.currentIndex() != 0:
                 cur.execute(
-                    f"SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion, weight, x,"
-                    f" y, z  FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where "
-                    f"categories_idcategories = idcategories and manufacturers_idmanufacturers = idmanufacturers "
-                    f"and categories.name = '{str(self.comboBox.currentText())}' and manufacturers.name = "
+                    f"SELECT idgoods, articul, categories.name, manufacturers.name, model, price, count, opinion FROM "
+                    f"shopdb.goods, shopdb.categories, shopdb.manufacturers where categories_idcategories = "
+                    f"idcategories and manufacturers_idmanufacturers = idmanufacturers and categories.name = "
+                    f"'{str(self.comboBox.currentText())}' and manufacturers.name = "
                     f"'{str(self.comboBox_2.currentText())}' and idgoods in {str1};")
                 data = cur.fetchall()
             elif self.comboBox.currentIndex() != 0:
                 cur.execute(
-                    f"SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion, weight, x,"
-                    f" y, z  FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where "
-                    f"categories_idcategories = idcategories and manufacturers_idmanufacturers = idmanufacturers "
-                    f"and categories.name = '{str(self.comboBox.currentText())}' and idgoods in {str1};")
+                    f"SELECT idgoods, articul, categories.name, manufacturers.name, model, price, count, opinion FROM "
+                    f"shopdb.goods, shopdb.categories, shopdb.manufacturers where categories_idcategories = "
+                    f"idcategories and manufacturers_idmanufacturers = idmanufacturers and categories.name = "
+                    f"'{str(self.comboBox.currentText())}' and idgoods in {str1};")
                 data = cur.fetchall()
             elif self.comboBox_2.currentIndex() != 0:
                 cur.execute(
-                    f"SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion, weight, x,"
-                    f" y, z  FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where "
+                    f"SELECT idgoods, articul, categories.name, manufacturers.name, model, price, count, opinion FROM "
+                    f"shopdb.goods, shopdb.categories, shopdb.manufacturers where "
                     f"categories_idcategories = idcategories and manufacturers_idmanufacturers = idmanufacturers "
                     f"and manufacturers.name = '{str(self.comboBox_2.currentText())}' and idgoods in {str1};")
                 data = cur.fetchall()
             elif txt != "":
-                cur.execute(f"SELECT idgoods, categories.name, manufacturers.name, model, price, count, opinion, "
-                            f"weight, x, y, z  FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where "
+                cur.execute(f"SELECT idgoods, articul, categories.name, manufacturers.name, model, price, count, "
+                            f"opinion FROM shopdb.goods, shopdb.categories, shopdb.manufacturers where "
                             f"categories_idcategories = idcategories and manufacturers_idmanufacturers = "
                             f"idmanufacturers and idgoods in {str1};")
                 data = cur.fetchall()
             else:
                 data = (1,)
-
         else:
             data = ()
         if data == (1,):
@@ -217,7 +224,7 @@ class Ui_MainWindow(object):
             self.tableView.setColumnHidden(0, True)
             self.tableView.resizeColumnsToContents()
         else:
-            data = (('', '', '', '', '', '', '', '', '', '', ''),)
+            data = (('', '', '', '', '', '', ''),)
             model = GoodsTableModel(data)
             self.tableView.setModel(model)
             self.tableView.setColumnHidden(0, True)
@@ -230,10 +237,11 @@ class Ui_MainWindow(object):
             db = dbret()
             cur = db.cursor()
             cur.execute(
-                f"SELECT distinct num, allsum, order.date, phoneNum FROM shopdb.order where num like ('%' + '{txt}' + '%');")
+                f"SELECT distinct num, allsum, order.date, (select email from auth_user where id = user_iduser), "
+                f"orderStatus FROM shopdb.order where num like ('%' + '{txt}' + '%');")
             data = cur.fetchall()
             if data == ():
-                data = (('', '', ''),)
+                data = (('', '', '', '', ''),)
             model = OrdersTableModel(data)
             self.tableView_2.setModel(model)
             self.tableView_2.resizeColumnsToContents()
@@ -252,6 +260,8 @@ class Ui_MainWindow(object):
         self.filtersUpdate()
 
     def filtersUpdate(self):
+        self.comboBox.clear()
+        self.comboBox_2.clear()
         db = dbret()
         cur = db.cursor()
         cur.execute("select name from categories order by name")
@@ -351,11 +361,14 @@ class Ui_MainWindow(object):
         self.action_card.setObjectName("action_card")
         self.action_4 = QtWidgets.QAction(MainWindow)
         self.action_4.setObjectName("action_4")
+        self.actionStatus = QtWidgets.QAction(MainWindow)
+        self.actionStatus.setObjectName("actionStatus")
         self.menu.addAction(self.action)
         self.menu.addAction(self.action_2)
         self.menu.addAction(self.action_3)
         self.menu_2.addAction(self.action_card)
         self.menu_2.addAction(self.action_4)
+        self.menu_2.addAction(self.actionStatus)
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menu_2.menuAction())
         self.filtersUpdate()
@@ -377,3 +390,4 @@ class Ui_MainWindow(object):
         self.action_3.setText(_translate("MainWindow", "Удалить"))
         self.action_card.setText(_translate("MainWindow", "О товаре"))
         self.action_4.setText(_translate("MainWindow", "О программе"))
+        self.actionStatus.setText(_translate("MainWindow", "Изменить статус заказа"))

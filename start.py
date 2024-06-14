@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from main import Ui_MainWindow
 from about import aboutDialog
 from card import cardDialog
+from status import statusDialog
 
 
 def aboutfun():
@@ -63,6 +64,7 @@ class MainWindow:
         self.ui.action.triggered.connect(self.ui.addChoice)
         self.ui.action_3.triggered.connect(self.delGoodFun)
         self.ui.action_card.triggered.connect(self.showCard)
+        self.ui.actionStatus.triggered.connect(self.changeStatusOrder)
 
     def goods_switch(self):
         self.ui.stackedWidget.setCurrentWidget(self.ui.page)
@@ -87,11 +89,28 @@ class MainWindow:
         self.ui.stackedWidget.setCurrentWidget(self.ui.page_2)
 
     def showCard(self):
-        ind = str(self.ui.tableView.model().index(self.ui.tableView.currentIndex().row(), 0).data())
-        card = cardDialog()
-        card.label_12.setText(ind)
-        card.loaddata()
-        card.exec_()
+        if self.ui.stackedWidget.currentWidget() == self.ui.page:
+            ind = str(self.ui.tableView.model().index(self.ui.tableView.currentIndex().row(), 0).data())
+            card = cardDialog()
+            card.label_12.setText(ind)
+            card.loaddata()
+            card.exec_()
+
+    def changeStatusOrder(self):
+        ind = str(self.ui.tableView_2.model().index(self.ui.tableView_2.currentIndex().row(), 0).data())
+        if self.ui.stackedWidget.currentWidget() == self.ui.page_2 and ind != "None":
+            statusDiag = statusDialog()
+            statusDiag.lineEdit.setText(self.ui.tableView_2.model().index(self.ui.tableView_2.currentIndex().row(), 0).data())
+            curStatus = self.ui.tableView_2.model().index(self.ui.tableView_2.currentIndex().row(), 4).data()
+            if curStatus == "В обработке":
+                statusDiag.comboBox.setCurrentIndex(0)
+            elif curStatus == "В пути":
+                statusDiag.comboBox.setCurrentIndex(1)
+            else:
+                statusDiag.comboBox.setCurrentIndex(2)
+            statusDiag.exec_()
+            self.ui.loaddata()
+
 
     def show(self):
         self.main_win.show()

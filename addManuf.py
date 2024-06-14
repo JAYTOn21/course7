@@ -9,7 +9,7 @@ def errfun():
 def dbret():
     db = mdb.connect(host='localhost',
                      user='root',
-                     password='2173',
+                     password='1234',
                      database='shopdb')
     return db
 
